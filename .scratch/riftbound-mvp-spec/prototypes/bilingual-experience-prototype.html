@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PROTOTYPE - Riftbound collection experience</title>
+  <!-- PROTOTYPE: Three UI structures, switchable with ?variant=A|B|C. Throw away after validation. -->
+  <style>
+    :root {
+      color-scheme: light;
+      --switcher: #151515;
+      --switcher-ink: #f7f3e8;
+      --focus: #156d70;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body { margin: 0; min-height: 100vh; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, summary:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+    }
+    [hidden] { display: none !important; }
+
+    .prototype-note {
+      position: fixed;
+      z-index: 90;
+      top: 12px;
+      right: 12px;
+      padding: 7px 10px;
+      border: 1px solid currentColor;
+      background: #fff8;
+      color: #222;
+      font: 700 10px/1.2 "Avenir Next", "Gill Sans", sans-serif;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+    }
+
+    .variant { min-height: 100vh; padding-bottom: 100px; }
+
+    /* Variant A: dense industrial workbench */
+    .variant-a {
+      --ink: #f3efe3;
+      --muted: #aaa89f;
+      --panel: #242521;
+      --line: #494a43;
+      --accent: #ff6b35;
+      --good: #addf85;
+      display: grid;
+      grid-template-columns: 215px minmax(360px, 1fr) minmax(320px, .72fr);
+      background: #181916;
+      color: var(--ink);
+      font-family: "Avenir Next", "Gill Sans", sans-serif;
+    }
+    .a-sidebar { border-right: 1px solid var(--line); padding: 28px 18px; }
+    .a-brand { margin: 0 0 42px; font: 900 24px/1 Georgia, serif; letter-spacing: -.05em; }
+    .a-brand span { color: var(--accent); }
+    .a-nav { display: grid; gap: 5px; }
+    .a-nav button {
+      border: 0; border-radius: 3px; padding: 11px 12px; background: transparent;
+      color: var(--muted); text-align: left; font-weight: 700;
+    }
+    .a-nav button[aria-current="page"] { background: var(--accent); color: #22150e; }
+    .a-sidebar footer { position: absolute; bottom: 112px; color: var(--muted); font-size: 12px; }
+    .a-main { padding: 28px clamp(22px, 4vw, 54px); border-right: 1px solid var(--line); }
+    .a-kicker { color: var(--accent); font-size: 11px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+    .a-main h1 { max-width: 680px; margin: 8px 0 8px; font: 700 clamp(32px, 5vw, 64px)/.96 Georgia, serif; letter-spacing: -.055em; }
+    .a-sub { color: var(--muted); margin-bottom: 32px; }
+    .a-status-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; }
+    .a-status { border: 1px solid var(--line); padding: 6px 9px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .a-status.good { border-color: var(--good); color: var(--good); }
+    .a-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .a-table th { color: var(--muted); font-size: 10px; text-align: left; letter-spacing: .12em; text-transform: uppercase; }
+    .a-table th, .a-table td { border-bottom: 1px solid var(--line); padding: 13px 8px; }
+    .a-table td:first-child { color: var(--accent); font-weight: 900; }
+    .a-table .missing { color: #ffae91; }
+    .a-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .a-button { border: 1px solid var(--line); border-radius: 2px; background: transparent; color: var(--ink); padding: 10px 13px; font-weight: 800; }
+    .a-button.primary { border-color: var(--accent); background: var(--accent); color: #28160e; }
+    .a-chat { display: flex; flex-direction: column; min-height: 100vh; background: var(--panel); }
+    .a-chat-head { padding: 28px 24px 18px; border-bottom: 1px solid var(--line); }
+    .a-chat-head h2 { margin: 0 0 10px; font: 700 22px Georgia, serif; }
+    .context-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 9px; background: #393a34; color: var(--ink); font-size: 11px; }
+    .context-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
+    .a-messages { display: grid; gap: 14px; padding: 22px 24px; align-content: start; flex: 1; }
+    .bubble { max-width: 92%; padding: 13px 14px; border-radius: 3px; line-height: 1.45; }
+    .bubble.user { justify-self: end; background: #3a3b35; }
+    .bubble.assistant { background: #ede7d8; color: #292a25; }
+    .answer-state { display: block; margin-bottom: 7px; color: #29705c; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .sources { margin-top: 10px; border-top: 1px solid #bcb5a7; padding-top: 8px; }
+    .sources summary { cursor: pointer; color: #704c31; font-weight: 800; }
+    .sources p { margin: 8px 0 0; font-size: 12px; }
+    .a-composer { display: flex; gap: 8px; padding: 16px 20px 104px; border-top: 1px solid var(--line); }
+    .a-composer input { min-width: 0; flex: 1; border: 1px solid var(--line); background: #191a17; color: var(--ink); padding: 12px; }
+
+    /* Variant B: editorial conversation */
+    .variant-b {
+      --paper: #f1eadc;
+      --ink: #24211c;
+      --faded: #736d61;
+      --rule: #bdb3a1;
+      --red: #a83728;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Charter, "Bitstream Charter", Georgia, serif;
+    }
+    .b-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 18px clamp(20px, 5vw, 72px); border-bottom: 1px solid var(--ink); }
+    .b-header strong { justify-self: center; font-size: 18px; letter-spacing: -.03em; }
+    .b-header nav { display: flex; gap: 18px; font: 700 12px "Avenir Next", sans-serif; text-transform: uppercase; letter-spacing: .1em; }
+    .b-header .b-account { justify-self: end; color: var(--faded); font: 700 12px "Avenir Next", sans-serif; }
+    .b-layout { display: grid; grid-template-columns: minmax(0, 760px) 260px; gap: clamp(32px, 7vw, 100px); max-width: 1120px; margin: 0 auto; padding: 68px 24px 130px; }
+    .b-eyebrow { margin: 0 0 14px; color: var(--red); font: 800 11px "Avenir Next", sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+    .b-title { margin: 0; font-size: clamp(43px, 8vw, 88px); line-height: .88; letter-spacing: -.07em; font-weight: 400; }
+    .b-intro { max-width: 570px; margin: 24px 0 40px; color: var(--faded); font-size: 18px; line-height: 1.5; }
+    .b-context { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 26px; }
+    .b-pill { border: 1px solid var(--ink); border-radius: 999px; background: transparent; padding: 8px 11px; color: var(--ink); font: 700 12px "Avenir Next", sans-serif; }
+    .b-pill.active { background: var(--ink); color: var(--paper); }
+    .b-question { display: grid; grid-template-columns: 1fr auto; border-bottom: 2px solid var(--ink); }
+    .b-question input { border: 0; background: transparent; padding: 16px 2px; color: var(--ink); font-size: clamp(20px, 3vw, 29px); outline: 0; }
+    .b-question button { border: 0; background: transparent; color: var(--red); font: 900 24px sans-serif; }
+    .b-response { margin-top: 38px; padding-left: clamp(18px, 4vw, 42px); border-left: 4px solid var(--red); }
+    .b-response .answer-state { color: var(--red); font-family: "Avenir Next", sans-serif; }
+    .b-response h2 { margin: 0 0 9px; font-size: 28px; }
+    .b-response p { font-size: 17px; line-height: 1.55; }
+    .b-response details { border-top: 1px solid var(--rule); padding-top: 12px; }
+    .b-rail { padding-top: 124px; }
+    .b-rail section { border-top: 1px solid var(--ink); padding: 13px 0 26px; }
+    .b-rail h2 { margin: 0 0 12px; color: var(--faded); font: 800 10px "Avenir Next", sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+    .b-rail a { display: block; padding: 7px 0; color: var(--ink); text-decoration: none; font-weight: 700; }
+    .b-rail small { color: var(--faded); }
+
+    /* Variant C: playful physical binder */
+    .variant-c {
+      --cream: #f5f0df;
+      --navy: #16243d;
+      --blue: #2f68c7;
+      --yellow: #f2c84b;
+      --coral: #e7573f;
+      min-height: 100vh;
+      background: var(--cream);
+      color: var(--navy);
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    }
+    .c-header { display: flex; justify-content: space-between; align-items: center; padding: 18px clamp(18px, 4vw, 56px); border-bottom: 3px solid var(--navy); }
+    .c-logo { font: 900 24px Georgia, serif; transform: rotate(-2deg); }
+    .c-tabs { display: flex; gap: 4px; }
+    .c-tabs button { border: 2px solid var(--navy); border-bottom-width: 4px; border-radius: 12px 12px 5px 5px; background: transparent; color: var(--navy); padding: 8px 12px; font-weight: 900; }
+    .c-tabs button.active { background: var(--yellow); }
+    .c-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 390px); gap: 24px; padding: 30px clamp(18px, 4vw, 56px) 125px; }
+    .c-titleline { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+    .c-titleline h1 { margin: 0; font: 900 clamp(36px, 6vw, 72px)/.92 Georgia, serif; letter-spacing: -.06em; }
+    .c-count { min-width: 88px; padding: 8px; border: 2px solid var(--navy); background: var(--yellow); text-align: center; font-weight: 900; transform: rotate(2deg); box-shadow: 4px 4px 0 var(--navy); }
+    .c-tools { display: flex; gap: 9px; margin-bottom: 18px; }
+    .c-search { flex: 1; border: 2px solid var(--navy); border-radius: 0; background: #fffaf0; padding: 11px; }
+    .c-button { border: 2px solid var(--navy); border-radius: 4px; background: var(--blue); color: #f8f4e9; padding: 10px 13px; font-weight: 900; box-shadow: 3px 3px 0 var(--navy); }
+    .c-grid { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 15px; }
+    .c-card { position: relative; min-height: 196px; border: 3px solid var(--navy); border-radius: 8px; padding: 13px; background: #e6d8b9; box-shadow: 5px 5px 0 var(--navy); overflow: hidden; }
+    .c-card:nth-child(2) { background: #d4ddc4; }
+    .c-card:nth-child(3) { background: #d7cfe5; }
+    .c-card::before { content: ""; display: block; height: 92px; margin-bottom: 12px; border: 2px solid var(--navy); background: repeating-linear-gradient(135deg, #203b6c 0 8px, #e7573f 8px 16px); }
+    .c-card:nth-child(2)::before { background: repeating-linear-gradient(45deg, #53733b 0 9px, #f2c84b 9px 18px); }
+    .c-card:nth-child(3)::before { background: repeating-linear-gradient(135deg, #653b75 0 7px, #df9c87 7px 14px); }
+    .c-card strong { display: block; font-family: Georgia, serif; }
+    .c-card small { color: #41506b; }
+    .c-qty { position: absolute; top: 7px; right: 7px; width: 31px; height: 31px; display: grid; place-items: center; border: 2px solid var(--navy); border-radius: 50%; background: var(--yellow); font-weight: 900; }
+    .c-assistant { position: sticky; top: 22px; align-self: start; border: 3px solid var(--navy); background: #fffaf0; box-shadow: 7px 7px 0 var(--navy); }
+    .c-assistant-head { padding: 16px; background: var(--coral); color: #fff9e8; border-bottom: 3px solid var(--navy); }
+    .c-assistant-head h2 { margin: 0; font: 900 24px Georgia, serif; }
+    .c-assistant-body { padding: 18px; }
+    .c-assistant-body .context-chip { background: var(--yellow); color: var(--navy); border: 1px solid var(--navy); }
+    .c-answer { margin: 18px 0; padding: 14px; background: #e9e4d5; border-left: 5px solid var(--blue); line-height: 1.45; }
+    .c-answer .answer-state { color: var(--blue); }
+    .c-suggestions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .c-suggestions button { border: 1px solid var(--navy); border-radius: 999px; background: transparent; padding: 7px 9px; color: var(--navy); font-size: 12px; }
+    .c-composer { display: flex; border-top: 2px solid var(--navy); }
+    .c-composer input { min-width: 0; flex: 1; border: 0; background: transparent; padding: 13px; }
+    .c-composer button { border: 0; border-left: 2px solid var(--navy); background: var(--yellow); padding: 0 17px; font-weight: 900; }
+
+    /* Prototype-only switcher */
+    .switcher {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: auto minmax(210px, auto) auto auto;
+      align-items: center;
+      overflow: hidden;
+      border: 2px solid #f7f3e8;
+      border-radius: 999px;
+      background: var(--switcher);
+      color: var(--switcher-ink);
+      box-shadow: 0 12px 35px #0005;
+      font-family: "Avenir Next", sans-serif;
+    }
+    .switcher button { min-height: 45px; border: 0; background: transparent; color: inherit; padding: 0 15px; font-weight: 900; }
+    .switcher button:hover { background: #333; }
+    .switcher-state { padding: 0 14px; text-align: center; font-size: 12px; }
+    .switcher-state strong { display: block; font-size: 13px; }
+    .language-button { border-left: 1px solid #ffffff42 !important; color: #f2c84b !important; }
+
+    @media (max-width: 900px) {
+      .variant-a { grid-template-columns: 78px 1fr; }
+      .a-sidebar { padding-inline: 10px; }
+      .a-brand { font-size: 0; }
+      .a-brand::after { content: "R"; color: var(--accent); font-size: 27px; }
+      .a-nav button { padding: 10px 7px; font-size: 11px; overflow: hidden; }
+      .a-sidebar footer { display: none; }
+      .a-main { border-right: 0; }
+      .a-chat { grid-column: 2; min-height: auto; border-top: 1px solid var(--line); }
+      .b-header { grid-template-columns: 1fr auto; }
+      .b-header nav { display: none; }
+      .b-header strong { justify-self: start; }
+      .b-layout { grid-template-columns: 1fr; padding-top: 42px; }
+      .b-rail { padding-top: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .c-layout { grid-template-columns: 1fr; }
+      .c-assistant { position: static; }
+    }
+
+    @media (max-width: 560px) {
+      .prototype-note { display: none; }
+      .variant-a { display: block; }
+      .a-sidebar { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; border: 0; border-bottom: 1px solid var(--line); background: #181916; }
+      .a-brand { margin: 0 12px 0 0; }
+      .a-nav { display: flex; overflow-x: auto; }
+      .a-nav button { white-space: nowrap; }
+      .a-main { padding: 24px 17px; }
+      .a-main h1 { font-size: 42px; }
+      .a-table { font-size: 12px; }
+      .a-chat { min-height: 620px; }
+      .b-header { padding-inline: 17px; }
+      .b-layout { padding-inline: 17px; }
+      .b-title { font-size: 48px; }
+      .b-rail { grid-template-columns: 1fr; }
+      .c-header { align-items: flex-start; }
+      .c-tabs { max-width: 210px; overflow-x: auto; }
+      .c-tabs button { font-size: 11px; white-space: nowrap; }
+      .c-titleline { align-items: start; }
+      .c-grid { grid-template-columns: repeat(2, 1fr); }
+      .c-card { min-height: 170px; }
+      .switcher { width: calc(100% - 20px); grid-template-columns: auto 1fr auto auto; bottom: 10px; }
+      .switcher-state { min-width: 0; padding-inline: 5px; }
+      .switcher-state span { display: none; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .variant:not([hidden]) { animation: reveal .28s cubic-bezier(.22, 1, .36, 1); }
+      @keyframes reveal { from { opacity: 0; transform: translateY(8px); } }
+    }
+  </style>
+</head>
+<body>
+  <div class="prototype-note">Prototype / no production</div>
+
+  <main id="variant-a" class="variant variant-a" data-variant="A">
+    <aside class="a-sidebar">
+      <p class="a-brand">Rift<span>folio</span></p>
+      <nav class="a-nav" aria-label="Principal">
+        <button data-i18n="collection">Colección</button>
+        <button aria-current="page" data-i18n="decks">Mazos</button>
+        <button data-i18n="assistant">Asistente</button>
+        <button data-i18n="imports">Importaciones</button>
+      </nav>
+      <footer>1.238 cartas<br>Actualizado hoy</footer>
+    </aside>
+    <section class="a-main">
+      <div class="a-kicker" data-i18n="deck_workspace">Mesa de mazo</div>
+      <h1>Ahri Tempo</h1>
+      <p class="a-sub" data-i18n="deck_summary">Standard · 40 cartas · actualizado hace 12 min</p>
+      <div class="a-status-row">
+        <span class="a-status good" data-i18n="legal">Legal</span>
+        <span class="a-status">36 / 40 <span data-i18n="owned">poseídas</span></span>
+        <span class="a-status missing">4 <span data-i18n="missing">faltantes</span></span>
+      </div>
+      <table class="a-table">
+        <thead><tr><th>#</th><th data-i18n="card">Carta</th><th data-i18n="section">Sección</th><th data-i18n="coverage">Cobertura</th></tr></thead>
+        <tbody>
+          <tr><td>3</td><td>Ahri, Alluring</td><td>Main</td><td>3 / 3</td></tr>
+          <tr><td>3</td><td>Charm</td><td>Main</td><td>3 / 3</td></tr>
+          <tr><td>2</td><td>Disarming Rake</td><td>Main</td><td class="missing">0 / 2</td></tr>
+          <tr><td>2</td><td>Rebuke</td><td>Main</td><td class="missing">0 / 2</td></tr>
+          <tr><td>3</td><td>Defy</td><td>Sideboard</td><td>3 / 3</td></tr>
+        </tbody>
+      </table>
+      <div class="a-actions">
+        <button class="a-button primary" data-i18n="edit_deck">Editar mazo</button>
+        <button class="a-button" data-i18n="export">Exportar</button>
+      </div>
+    </section>
+    <aside class="a-chat">
+      <header class="a-chat-head">
+        <h2 data-i18n="ask_about_deck">Pregunta sobre este mazo</h2>
+        <span class="context-chip">Ahri Tempo · última versión</span>
+      </header>
+      <div class="a-messages">
+        <div class="bubble user" data-i18n="sample_question">¿Puedo jugarlo este fin de semana?</div>
+        <div class="bubble assistant">
+          <span class="answer-state">Grounded</span>
+          <strong data-i18n="sample_answer_title">Sí, el mazo es legal en Standard.</strong>
+          <p data-i18n="sample_answer_body">Te faltan cuatro cartas físicas, pero eso no cambia su legalidad.</p>
+          <details class="sources"><summary data-i18n="view_sources">Ver fuentes</summary><p>Constructed Format Legality · Rules Hub · 16 Jul 2026 · EN</p></details>
+        </div>
+      </div>
+      <form class="a-composer" onsubmit="return demoSubmit(event)">
+        <input aria-label="Pregunta" data-placeholder="ask_placeholder" placeholder="Pregunta por reglas, cambios o faltantes…">
+        <button class="a-button primary" data-i18n="send">Enviar</button>
+      </form>
+    </aside>
+  </main>
+
+  <main id="variant-b" class="variant variant-b" data-variant="B" hidden>
+    <header class="b-header">
+      <nav><span data-i18n="collection">Colección</span><span data-i18n="decks">Mazos</span></nav>
+      <strong>Riftfolio / Ask</strong>
+      <span class="b-account">patricio@example.com</span>
+    </header>
+    <div class="b-layout">
+      <section>
+        <p class="b-eyebrow" data-i18n="knowledge_desk">Mesa de conocimiento</p>
+        <h1 class="b-title" data-i18n="what_to_solve">¿Qué quieres resolver?</h1>
+        <p class="b-intro" data-i18n="editorial_intro">Pregunta por una interacción de reglas, revisa lo que puedes construir o abre un mazo para analizarlo con contexto.</p>
+        <div class="b-context" aria-label="Contexto de consulta">
+          <button class="b-pill active" data-context="rules" data-i18n="current_rules">Reglas actuales</button>
+          <button class="b-pill" data-context="collection" data-i18n="my_collection">Mi colección</button>
+          <button class="b-pill" data-context="deck">Ahri Tempo</button>
+        </div>
+        <form class="b-question" onsubmit="return demoSubmit(event)">
+          <input aria-label="Pregunta" data-placeholder="ask_placeholder_short" placeholder="Escribe una pregunta…">
+          <button aria-label="Enviar">→</button>
+        </form>
+        <article class="b-response">
+          <span class="answer-state">No official answer</span>
+          <h2 data-i18n="unknown_title">Riot aún no resolvió este caso.</h2>
+          <p data-i18n="unknown_body">Las reglas actuales describen ambos efectos, pero no establecen cuál se aplica primero en esta interacción. No voy a completar el vacío con una interpretación comunitaria.</p>
+          <details><summary data-i18n="documents_checked">3 documentos oficiales consultados</summary><p>Core Rules · Vendetta FAQ · Core Rules Patch Notes</p></details>
+        </article>
+      </section>
+      <aside class="b-rail">
+        <section>
+          <h2 data-i18n="continue_with">Continuar con</h2>
+          <a href="#">Ahri Tempo <small>· legal · 4 faltantes</small></a>
+          <a href="#">Jinx Aggro <small>· borrador</small></a>
+        </section>
+        <section>
+          <h2 data-i18n="recent">Reciente</h2>
+          <a href="#" data-i18n="recent_one">¿Cómo funciona Deflect?</a>
+          <a href="#" data-i18n="recent_two">Cartas para mejorar Ahri</a>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <main id="variant-c" class="variant variant-c" data-variant="C" hidden>
+    <header class="c-header">
+      <div class="c-logo">Riftfolio</div>
+      <nav class="c-tabs" aria-label="Principal">
+        <button class="active" data-i18n="binder">Archivador</button>
+        <button data-i18n="decks">Mazos</button>
+        <button data-i18n="imports">Importar</button>
+      </nav>
+    </header>
+    <div class="c-layout">
+      <section>
+        <div class="c-titleline">
+          <h1 data-i18n="my_collection">Mi colección</h1>
+          <div class="c-count">386<br><small data-i18n="copies">copias</small></div>
+        </div>
+        <div class="c-tools">
+          <input class="c-search" aria-label="Buscar cartas" data-placeholder="search_cards" placeholder="Buscar carta, set o número…">
+          <button class="c-button" data-i18n="add">+ Añadir</button>
+        </div>
+        <div class="c-grid">
+          <article class="c-card"><span class="c-qty">3</span><strong>Ahri, Alluring</strong><small>Origins · EN · Normal</small></article>
+          <article class="c-card"><span class="c-qty">4</span><strong>Charm</strong><small>Origins · ES · Foil</small></article>
+          <article class="c-card"><span class="c-qty">1</span><strong>Defy</strong><small>Spiritforged · EN · Normal</small></article>
+        </div>
+      </section>
+      <aside class="c-assistant">
+        <header class="c-assistant-head"><h2 data-i18n="collection_guide">Guía de colección</h2></header>
+        <div class="c-assistant-body">
+          <span class="context-chip" data-i18n="using_collection">Usando Mi colección</span>
+          <div class="c-answer">
+            <span class="answer-state">Grounded</span>
+            <strong data-i18n="build_count">Puedes completar 2 de tus 5 mazos.</strong>
+            <p data-i18n="build_detail">Ahri Tempo necesita 2 Disarming Rake y 2 Rebuke.</p>
+          </div>
+          <div class="c-suggestions">
+            <button data-i18n="what_can_build">¿Qué puedo construir?</button>
+            <button data-i18n="show_missing">Ver faltantes</button>
+            <button data-i18n="explain_card">Explicar una carta</button>
+          </div>
+        </div>
+        <form class="c-composer" onsubmit="return demoSubmit(event)">
+          <input aria-label="Pregunta" data-placeholder="ask_collection" placeholder="Pregunta sobre tus cartas…">
+          <button aria-label="Enviar">→</button>
+        </form>
+      </aside>
+    </div>
+  </main>
+
+  <div class="switcher" role="group" aria-label="Selector de variante del prototipo">
+    <button id="previous-variant" aria-label="Variante anterior">←</button>
+    <div class="switcher-state" aria-live="polite"><strong id="variant-label">A · Mesa de mando</strong><span id="state-label">Deck: Ahri Tempo · ES</span></div>
+    <button id="next-variant" aria-label="Variante siguiente">→</button>
+    <button id="language-button" class="language-button" aria-label="Cambiar idioma">ES / EN</button>
+  </div>
+
+  <script>
+    const variants = [
+      { key: 'A', name: { es: 'Mesa de mando', en: 'Command desk' } },
+      { key: 'B', name: { es: 'Conversación editorial', en: 'Editorial conversation' } },
+      { key: 'C', name: { es: 'Archivador visual', en: 'Visual binder' } }
+    ];
+    const copy = {
+      es: {
+        collection: 'Colección', decks: 'Mazos', assistant: 'Asistente', imports: 'Importaciones',
+        deck_workspace: 'Mesa de mazo', deck_summary: 'Standard · 40 cartas · actualizado hace 12 min', legal: 'Legal', owned: 'poseídas', missing: 'faltantes',
+        card: 'Carta', section: 'Sección', coverage: 'Cobertura', edit_deck: 'Editar mazo', export: 'Exportar', ask_about_deck: 'Pregunta sobre este mazo',
+        sample_question: '¿Puedo jugarlo este fin de semana?', sample_answer_title: 'Sí, el mazo es legal en Standard.', sample_answer_body: 'Te faltan cuatro cartas físicas, pero eso no cambia su legalidad.',
+        view_sources: 'Ver fuentes', send: 'Enviar', knowledge_desk: 'Mesa de conocimiento', what_to_solve: '¿Qué quieres resolver?',
+        editorial_intro: 'Pregunta por una interacción de reglas, revisa lo que puedes construir o abre un mazo para analizarlo con contexto.', current_rules: 'Reglas actuales', my_collection: 'Mi colección',
+        unknown_title: 'Riot aún no resolvió este caso.', unknown_body: 'Las reglas actuales describen ambos efectos, pero no establecen cuál se aplica primero en esta interacción. No voy a completar el vacío con una interpretación comunitaria.',
+        documents_checked: '3 documentos oficiales consultados', continue_with: 'Continuar con', recent: 'Reciente', recent_one: '¿Cómo funciona Deflect?', recent_two: 'Cartas para mejorar Ahri',
+        binder: 'Archivador', copies: 'copias', add: '+ Añadir', collection_guide: 'Guía de colección', using_collection: 'Usando Mi colección',
+        build_count: 'Puedes completar 2 de tus 5 mazos.', build_detail: 'Ahri Tempo necesita 2 Disarming Rake y 2 Rebuke.', what_can_build: '¿Qué puedo construir?', show_missing: 'Ver faltantes', explain_card: 'Explicar una carta'
+      },
+      en: {
+        collection: 'Collection', decks: 'Decks', assistant: 'Assistant', imports: 'Imports',
+        deck_workspace: 'Deck workbench', deck_summary: 'Standard · 40 cards · updated 12 min ago', legal: 'Legal', owned: 'owned', missing: 'missing',
+        card: 'Card', section: 'Section', coverage: 'Coverage', edit_deck: 'Edit deck', export: 'Export', ask_about_deck: 'Ask about this deck',
+        sample_question: 'Can I play this deck this weekend?', sample_answer_title: 'Yes, the deck is legal in Standard.', sample_answer_body: 'You are missing four physical cards, but that does not change its legality.',
+        view_sources: 'View sources', send: 'Send', knowledge_desk: 'Knowledge desk', what_to_solve: 'What do you want to solve?',
+        editorial_intro: 'Ask about a rules interaction, see what you can build, or open a deck to analyse it with context.', current_rules: 'Current rules', my_collection: 'My collection',
+        unknown_title: 'Riot has not resolved this case yet.', unknown_body: 'The current rules describe both effects, but do not establish which applies first in this interaction. I will not fill the gap with a community interpretation.',
+        documents_checked: '3 official documents checked', continue_with: 'Continue with', recent: 'Recent', recent_one: 'How does Deflect work?', recent_two: 'Cards to improve Ahri',
+        binder: 'Binder', copies: 'copies', add: '+ Add', collection_guide: 'Collection guide', using_collection: 'Using My collection',
+        build_count: 'You can complete 2 of your 5 decks.', build_detail: 'Ahri Tempo needs 2 Disarming Rake and 2 Rebuke.', what_can_build: 'What can I build?', show_missing: 'Show missing cards', explain_card: 'Explain a card'
+      }
+    };
+    const placeholders = {
+      es: { ask_placeholder: 'Pregunta por reglas, cambios o faltantes…', ask_placeholder_short: 'Escribe una pregunta…', search_cards: 'Buscar carta, set o número…', ask_collection: 'Pregunta sobre tus cartas…' },
+      en: { ask_placeholder: 'Ask about rules, changes or missing cards…', ask_placeholder_short: 'Type a question…', search_cards: 'Search card, set or number…', ask_collection: 'Ask about your cards…' }
+    };
+    let language = 'es';
+    let current = Math.max(0, variants.findIndex((item) => item.key === new URLSearchParams(location.search).get('variant')));
+
+    function renderVariant() {
+      document.querySelectorAll('[data-variant]').forEach((node) => { node.hidden = node.dataset.variant !== variants[current].key; });
+      const variant = variants[current];
+      document.getElementById('variant-label').textContent = `${variant.key} · ${variant.name[language]}`;
+      document.getElementById('state-label').textContent = `${variant.key === 'A' ? 'Deck: Ahri Tempo' : variant.key === 'B' ? 'Context: Current rules' : 'Context: My collection'} · ${language.toUpperCase()}`;
+      const url = new URL(location.href);
+      url.searchParams.set('variant', variant.key);
+      history.replaceState({}, '', url);
+    }
+
+    function renderLanguage() {
+      document.documentElement.lang = language;
+      document.querySelectorAll('[data-i18n]').forEach((node) => {
+        const translated = copy[language][node.dataset.i18n];
+        if (translated) node.textContent = translated;
+      });
+      document.querySelectorAll('[data-placeholder]').forEach((node) => { node.placeholder = placeholders[language][node.dataset.placeholder]; });
+      renderVariant();
+    }
+
+    function cycle(direction) {
+      current = (current + direction + variants.length) % variants.length;
+      renderVariant();
+    }
+
+    function demoSubmit(event) {
+      event.preventDefault();
+      const input = event.currentTarget.querySelector('input');
+      if (input.value.trim()) {
+        input.value = '';
+        input.placeholder = language === 'es' ? 'Prototipo: pregunta recibida' : 'Prototype: question received';
+      }
+      return false;
+    }
+
+    document.getElementById('previous-variant').addEventListener('click', () => cycle(-1));
+    document.getElementById('next-variant').addEventListener('click', () => cycle(1));
+    document.getElementById('language-button').addEventListener('click', () => { language = language === 'es' ? 'en' : 'es'; renderLanguage(); });
+    document.querySelectorAll('.b-pill').forEach((button) => button.addEventListener('click', () => {
+      document.querySelectorAll('.b-pill').forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById('state-label').textContent = `Context: ${button.textContent} · ${language.toUpperCase()}`;
+    }));
+    document.addEventListener('keydown', (event) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+      if (event.key === 'ArrowLeft') cycle(-1);
+      if (event.key === 'ArrowRight') cycle(1);
+    });
+    renderLanguage();
+  </script>
+</body>
+</html>
